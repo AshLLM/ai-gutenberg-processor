@@ -19,7 +19,7 @@ the literary text) to find reliable anchor strings, which are then used to slice
 ## Project files
 
 ```
-ai-gutenberg-processor/
+MD040/fenced-code-language: Fenced code blocks should have a language specifiedmarkdownlintMD040ai-gutenberg-processor/
 ├── ai_gutenberg_cleaner.ipynb   ← main notebook
 ├── helper.py                    ← metadata scraping, text utilities, OpenAI setup
 ├── requirements.txt
@@ -78,6 +78,7 @@ gutenberg_url = "https://www.gutenberg.org/ebooks/84"  # Frankenstein
 Running the pipeline on [Alice's Adventures in Wonderland by Lewis Carroll](https://www.gutenberg.org/ebooks/11) produces:
 
 **`metadata/11.metadata.json`**
+
 ```json
 {
   "title": "Alice's Adventures in Wonderland",
@@ -97,7 +98,8 @@ Running the pipeline on [Alice's Adventures in Wonderland by Lewis Carroll](http
 ```
 
 **`core_txts/11_clean.txt`** (opening lines)
-```
+
+```txt
 CHAPTER I.
 
 Down the Rabbit-Hole
