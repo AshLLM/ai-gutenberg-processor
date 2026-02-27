@@ -1,71 +1,38 @@
-# ai-gutenberg-cleaner
+# ai-gutenberg-processor
 
-A Jupyter notebook pipeline that takes a single **Project Gutenberg ebook page URL** and produces:
+A Jupyter notebook pipeline that takes a Project Gutenberg ebook URL and outputs:
 
-1. A structured **metadata JSON** (`metadata/<id>.metadata.json`)
-2. A clean **core literary text** (`core_txts/<id>_clean.txt`) with Gutenberg boilerplate and editorial matter removed
-
----
+- a metadata JSON sidecar (`metadata/<id>.metadata.json`)
+- a clean core text file (`core_txts/<id>_clean.txt`) with Gutenberg boilerplate stripped out
 
 ## How it works
 
 ```
-gutenberg_url  ─────────────────────────────────────────────────────────┐
-                                                                         ▼
-                              ┌─────────────────────────────────────────────┐
-                              │  1 · Metadata                               │
-                              │  Scrape ebook page → metadata/<id>.json     │
-                              └──────────────────────┬──────────────────────┘
-                                                     │ ebook_no
-                                                     ▼
-                              ┌─────────────────────────────────────────────┐
-                              │  2 · Fetch & preliminary cleanup            │
-                              │  Download plain text → gutenberg_cleaner    │
-                              │  head[:50 000]  /  tail[-50 000:]           │
-                              └──────────────────────┬──────────────────────┘
-                                                     │
-                                                     ▼
-                              ┌─────────────────────────────────────────────┐
-                              │  3 · Identify boundaries with AI (6 calls)  │
-                              │  Map → Select → Extract  ×  start & end     │
-                              └──────────────────────┬──────────────────────┘
-                                                     │ anchor strings
-                                                     ▼
-                              ┌─────────────────────────────────────────────┐
-                              │  4 · Extract & save                         │
-                              │  Slice text_core → core_txts/<id>_clean.txt │
-                              └──────────────────────┬──────────────────────┘
-                                                     │
-                                                     ▼
-                              ┌─────────────────────────────────────────────┐
-                              │  5 · NLTK demo                              │
-                              │  Tokenise, collocations, concordance, plot  │
-                              └─────────────────────────────────────────────┘
+URL → scrape metadata → fetch plain text → AI boundary detection → extract & save → NLTK demo
 ```
 
----
+Boundary detection uses 6 chained GPT calls (map → select → extract, for both the start and end of
+the literary text) to find reliable anchor strings, which are then used to slice out the core text.
 
 ## Project files
 
 ```
-processing_gutenberg/
-├── gutenberg_pipeline.ipynb   ← main notebook (single entry point)
-├── helper_functions.py        ← metadata scraping + text utilities
+ai-gutenberg-processor/
+├── ai_gutenberg_cleaner.ipynb   ← main notebook
+├── helper.py                    ← metadata scraping, text utilities, OpenAI setup
 ├── requirements.txt
 ├── OPENAI_KEY.env.example
-├── metadata/                  ← persisted metadata JSON files
-└── core_txts/                 ← extracted core literary texts
+├── metadata/                    ← generated metadata JSON files (git-ignored)
+└── core_txts/                   ← generated clean text files (git-ignored)
 ```
-
----
 
 ## Setup
 
 ### 1. Clone the repo
 
 ```bash
-git clone https://github.com/AshLLM/Project-Gutenberg-Slice-wLLMs.git
-cd Project-Gutenberg-Slice-wLLMs
+git clone https://github.com/AshLLM/ai-gutenberg-processor.git
+cd ai-gutenberg-processor
 ```
 
 ### 2. Create a virtual environment (recommended)
@@ -84,34 +51,28 @@ pip install -r requirements.txt
 
 ### 4. Add your OpenAI API key
 
-Copy the example env file and add your key:
-
 ```bash
 cp OPENAI_KEY.env.example OPENAI_KEY.env
 ```
 
-Edit `OPENAI_KEY.env`:
+Then edit `OPENAI_KEY.env` and replace the placeholder with your key:
 
-```env
+```
 OPENAI_API_KEY=sk-...
 ```
 
-`OPENAI_KEY.env` is git-ignored and should never be committed.
-
----
+`OPENAI_KEY.env` is git-ignored — don't commit it.
 
 ## Usage
 
-Open `gutenberg_pipeline.ipynb`, set `gutenberg_url` in cell 2 to any Gutenberg ebook page URL, and run all cells:
+Open `ai_gutenberg_cleaner.ipynb`, set `gutenberg_url` in the first code cell, and run all cells:
 
 ```python
-gutenberg_url = "https://www.gutenberg.org/ebooks/84"   # Frankenstein
+gutenberg_url = "https://www.gutenberg.org/ebooks/84"  # Frankenstein
 ```
-
----
 
 ## Notes
 
-- Running the notebook makes 6 OpenAI API calls per book.
-- `helper_functions.py` contains all utilities (metadata scraping, text normalisation, anchor finding) and can be imported from any other notebook.
-- This is a learning/portfolio project, not a production system.
+- Each run makes 6 OpenAI API calls, so it'll cost a small amount depending on your plan.
+- `helper.py` can be imported into other notebooks if you want to reuse the utilities.
+- Learning/portfolio project — not production-ready.
