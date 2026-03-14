@@ -167,7 +167,8 @@ def fetch_metadata(ebook_url: str) -> Dict[str, Optional[str]]:
         if label == "author":
             author = re.sub(r",\s*\d{4}-\d{4}$", "", value_text).strip()
         elif label == "title":
-            title = value_text
+            parts = [_clean_text(s) for s in td.stripped_strings]
+            title = [p for p in parts if p] or [value_text]
         elif label == "language":
             language = value_text
         elif label == "ebook-no.":
@@ -186,7 +187,7 @@ def fetch_metadata(ebook_url: str) -> Dict[str, Optional[str]]:
             publication_date = _extract_publication_date(summary_div.get_text())
 
     return {
-        "title": title or None,
+        "title": title if title else None,
         "author": author or None,
         "language": language or None,
         "publication_date": publication_date or None,
