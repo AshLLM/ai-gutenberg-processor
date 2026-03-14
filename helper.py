@@ -225,6 +225,34 @@ def plaintext_url(ebook_id: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Preliminary text cleaning with regex and heuristics
+# ---------------------------------------------------------------------------
+
+
+def strip_boilerplate(text: str) -> str:
+    """Remove Project Gutenberg's header and footer boilerplate.
+
+    Slices between the standard *** START/END *** markers.
+    Returns the text stripped but otherwise unmodified if no markers are found.
+    """
+    start_marker = re.search(
+        r"\*{3}\s*START OF (?:THE |THIS )?PROJECT GUTENBERG[^\n]*\*{3}",
+        text,
+        re.IGNORECASE,
+    )
+    end_marker = re.search(
+        r"\*{3}\s*END OF (?:THE |THIS )?PROJECT GUTENBERG[^\n]*\*{3}",
+        text,
+        re.IGNORECASE,
+    )
+
+    if start_marker and end_marker and end_marker.start() > start_marker.end():
+        return text[start_marker.end() : end_marker.start()].strip()
+
+    return text.strip()
+
+
+# ---------------------------------------------------------------------------
 # Text normalisation & anchor finding
 # ---------------------------------------------------------------------------
 

@@ -1,6 +1,5 @@
 openai>=1.0.0
 python-dotenv>=1.2.1
 nltk>=3.9.2
-gutenberg-cleaner>=0.1.6
 requests>=2.31.0
 beautifulsoup4>=4.12.0
