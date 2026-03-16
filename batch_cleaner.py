@@ -22,6 +22,20 @@ def parse_ebook_ids(user_input: str) -> list[str]:
     return [id.strip() for id in user_input.split(",") if id.strip()]
 
 
+def _save_text(
+    ebook_id: str,
+    text: str,
+    output_dir: str,
+    suffix: str,
+) -> str:
+    """Write a text artifact and return the saved file path."""
+    os.makedirs(output_dir, exist_ok=True)
+    file_path = os.path.join(output_dir, f"{ebook_id}_{suffix}.txt")
+    with open(file_path, "w", encoding="utf-8") as f:
+        f.write(text)
+    return file_path
+
+
 # ── Prompt templates ────────────────────────────────────────────────────────
 
 
@@ -205,6 +219,7 @@ def process_ebook(client, ebook_id: str) -> dict:
     url = meta.get("plain_text_url") or plaintext_url(ebook_id)
     response = request.urlopen(url)
     raw = response.read().decode("utf-8-sig")
+    raw_file_path = _save_text(ebook_id, raw, "raw_txts", "raw")
     cleaned_text = strip_boilerplate(raw)
     print(f" {len(cleaned_text):,} chars")
 
@@ -264,15 +279,11 @@ def process_ebook(client, ebook_id: str) -> dict:
             "status": "anchor_failed",
             "start_idx": start_idx,
             "end_idx": end_idx,
+            "raw_file": raw_file_path,
         }
 
     text_core = cleaned_text[start_idx : end_idx + end_len]
-
-    output_dir = "core_txts"
-    os.makedirs(output_dir, exist_ok=True)
-    file_path = os.path.join(output_dir, f"{ebook_id}_clean.txt")
-    with open(file_path, "w", encoding="utf-8") as f:
-        f.write(text_core)
+    file_path = _save_text(ebook_id, text_core, "core_txts", "core")
 
     print(f" {len(text_core):,} chars saved")
 
@@ -282,6 +293,7 @@ def process_ebook(client, ebook_id: str) -> dict:
         "status": "success",
         "characters": len(text_core),
         "file": file_path,
+        "raw_file": raw_file_path,
     }
 
 
