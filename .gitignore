@@ -15,5 +15,4 @@ raw_txts/
 .ipynb_checkpoints/
 
 # Hidden temporarily
-ai_gutenberg_cleaner.ipynb
 tests.ipynb
