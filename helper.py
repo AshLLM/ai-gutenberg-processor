@@ -83,15 +83,32 @@ def _extract_publication_date(summary_text: str) -> Optional[str]:
 # ---------------------------------------------------------------------------
 
 
-def _empty_metadata(url: str, error: str) -> Dict[str, Optional[str]]:
+def _empty_metadata(url: str, error: str) -> dict:
     """Return a metadata dict with all fields set to None and an error message."""
     return {
+        "id": None,
         "title": None,
-        "author": None,
-        "language": None,
-        "publication_date": None,
-        "ebook_no": None,
+        "authors": None,
+        "editors": None,
+        "translators": None,
+        "is_translation": None,
+        "languages": None,
         "subjects": None,
+        "bookshelves": None,
+        "copyright": None,
+        "publication_year_start": None,
+        "publication_year_end": None,
+        "publication_year_source": None,
+        "publication_year_confidence": None,
+        "composition_year_start": None,
+        "composition_year_end": None,
+        "composition_year_source": None,
+        "composition_year_confidence": None,
+        "translation_year": None,
+        "translation_year_source": None,
+        "summary": None,
+        "summary_is_unverified": None,
+        "plain_text_url": None,
         "source_url": url,
         "error": error,
     }
