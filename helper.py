@@ -62,19 +62,163 @@ def _extract_ebook_id(url: str) -> Optional[str]:
     return None
 
 
-def _extract_publication_date(summary_text: str) -> Optional[str]:
-    """Extract a 4-digit year from summary text such as 'first published in 1868'."""
-    if not summary_text:
-        return None
-    patterns = [
-        r"(?:first\s+)?published\s+in\s+(\d{4})",
-        r"(?:originally\s+)?published\s+in\s+(\d{4})",
-    ]
-    for pattern in patterns:
-        match = re.search(pattern, summary_text, re.IGNORECASE)
-        if match:
-            return match.group(1)
+YEAR_RANGE_PATTERN = re.compile(
+    r"\b(?:published|written|composed|completed|created)"
+    r"\s+(?:in\s+)?(?:the\s+)?"
+    r"(\d{4})\s+to\s+(\d{4})\b",
+    re.IGNORECASE,
+)
+
+SINGLE_YEAR_PATTERNS = [
+    (re.compile(r"\bpublished\s+in\s+(\d{4})\b", re.IGNORECASE), "high"),
+    (
+        re.compile(
+            r"\b(?:first|originally)\s+published\s+(?:in\s+)?(\d{4})\b",
+            re.IGNORECASE,
+        ),
+        "high",
+    ),
+    (
+        re.compile(r"\b(?:written|composed|completed)\s+in\s+(\d{4})\b", re.IGNORECASE),
+        "high",
+    ),
+    (
+        re.compile(
+            r"\b(?:novel|poem|story|work|essay|play)\s+(?:of|in)\s+(\d{4})\b",
+            re.IGNORECASE,
+        ),
+        "high",
+    ),
+    (re.compile(r"\((\d{4})\)", re.IGNORECASE), "low"),
+]
+
+TRANSLATION_PATTERNS = [
+    (re.compile(r"\btranslated\s+in\s+(\d{4})\b", re.IGNORECASE), "high"),
+    (
+        re.compile(r"\btranslation\s+(?:published\s+)?in\s+(\d{4})\b", re.IGNORECASE),
+        "high",
+    ),
+    (re.compile(r"\b(\d{4})\s+translation\b", re.IGNORECASE), "high"),
+    (re.compile(r"\((\d{4})\)", re.IGNORECASE), "low"),
+]
+
+PLAUSIBLE_YEAR_RANGE = (400, 1950)
+
+
+def _is_plausible(year: int) -> bool:
+    return PLAUSIBLE_YEAR_RANGE[0] <= year <= PLAUSIBLE_YEAR_RANGE[1]
+
+
+def _sanity_check_against_persons(
+    year: int,
+    persons: List[dict],
+    posthumous_window: int = 10,
+) -> bool:
+    """Return True if *year* is plausible given available birth/death years."""
+    for person in persons:
+        birth = person.get("birth_year")
+        death = person.get("death_year")
+        if birth is not None and year < birth:
+            return False
+        if death is not None and year > death + posthumous_window:
+            return False
+    return True
+
+
+def _extract_year_range(text: str) -> Optional[Tuple[int, int]]:
+    match = YEAR_RANGE_PATTERN.search(text)
+    if match:
+        start, end = int(match.group(1)), int(match.group(2))
+        if _is_plausible(start) and _is_plausible(end):
+            return start, end
     return None
+
+
+def _extract_single_year(
+    text: str,
+    patterns: List[Tuple[re.Pattern, str]],
+    sanity_persons: List[dict],
+) -> Tuple[Optional[int], Optional[str], Optional[str]]:
+    """Return ``(year, source, confidence)`` or ``(None, None, None)``."""
+    for pattern, confidence in patterns:
+        match = pattern.search(text)
+        if match:
+            year = int(match.group(1))
+            if _is_plausible(year) and _sanity_check_against_persons(year, sanity_persons):
+                return year, "summary_regex", confidence
+    return None, None, None
+
+
+def _extract_publication_dates(summaries: List[str], authors: List[dict]) -> dict:
+    """Extract publication date fields for non-translated works."""
+    text = " ".join(summaries)
+
+    date_range = _extract_year_range(text)
+    if date_range:
+        start, end = date_range
+        if _sanity_check_against_persons(start, authors) and _sanity_check_against_persons(
+            end, authors
+        ):
+            return {
+                "publication_year_start": start,
+                "publication_year_end": end,
+                "publication_year_source": "summary_regex",
+                "publication_year_confidence": "high",
+            }
+
+    year, source, confidence = _extract_single_year(text, SINGLE_YEAR_PATTERNS, authors)
+    return {
+        "publication_year_start": year,
+        "publication_year_end": None,
+        "publication_year_source": source,
+        "publication_year_confidence": confidence,
+    }
+
+
+def _extract_composition_dates(summaries: List[str], authors: List[dict]) -> dict:
+    """Extract original composition dates for translated works."""
+    null_result = {
+        "composition_year_start": None,
+        "composition_year_end": None,
+        "composition_year_source": None,
+        "composition_year_confidence": None,
+    }
+
+    if not authors:
+        return null_result
+
+    text = " ".join(summaries)
+
+    date_range = _extract_year_range(text)
+    if date_range:
+        start, end = date_range
+        if _sanity_check_against_persons(start, authors) and _sanity_check_against_persons(
+            end, authors
+        ):
+            return {
+                "composition_year_start": start,
+                "composition_year_end": end,
+                "composition_year_source": "summary_regex",
+                "composition_year_confidence": "low",
+            }
+
+    year, source, _ = _extract_single_year(text, SINGLE_YEAR_PATTERNS, authors)
+    return {
+        "composition_year_start": year,
+        "composition_year_end": None,
+        "composition_year_source": source,
+        "composition_year_confidence": "low" if year is not None else None,
+    }
+
+
+def _extract_translation_year(
+    summaries: List[str],
+    translators: List[dict],
+) -> Tuple[Optional[int], Optional[str]]:
+    """Extract the translation year using translator dates for sanity checks."""
+    text = " ".join(summaries)
+    year, source, _ = _extract_single_year(text, TRANSLATION_PATTERNS, translators)
+    return year, source
 
 
 # ---------------------------------------------------------------------------
@@ -108,6 +252,7 @@ def _empty_metadata(ebook: str, error: str) -> dict:
         "summary": None,
         "summary_is_unverified": None,
         "plain_text_url": None,
+        "source_url": None,
         "error": error,
     }
 
@@ -137,10 +282,32 @@ def fetch_metadata(ebook_id: str) -> dict:
     formats = data.get("formats", {})
     plain_text_url = formats.get("text/plain; charset=utf-8")
 
-    # -- Publication date (Phase 2 upgrades this)
+    # -- Source URL
+    source_url = f"https://www.gutenberg.org/ebooks/{data.get('id', ebook_id)}"
+
+    # -- Date extraction
     summary_text = summaries[0] if summaries else ""
-    raw_year = _extract_publication_date(summary_text)
-    pub_year = int(raw_year) if raw_year else None
+
+    if is_translation:
+        pub_dates = {
+            "publication_year_start": None,
+            "publication_year_end": None,
+            "publication_year_source": None,
+            "publication_year_confidence": None,
+        }
+        comp_dates = _extract_composition_dates(summaries, authors)
+        translation_year, translation_year_source = _extract_translation_year(
+            summaries, translators
+        )
+    else:
+        pub_dates = _extract_publication_dates(summaries, authors)
+        comp_dates = {
+            "composition_year_start": None,
+            "composition_year_end": None,
+            "composition_year_source": None,
+            "composition_year_confidence": None,
+        }
+        translation_year, translation_year_source = None, None
 
     return {
         "id": data.get("id"),
@@ -153,19 +320,14 @@ def fetch_metadata(ebook_id: str) -> dict:
         "subjects": data.get("subjects", []),
         "bookshelves": data.get("bookshelves", []),
         "copyright": data.get("copyright"),
-        "publication_year_start": pub_year,
-        "publication_year_end": None,
-        "publication_year_source": "summary_regex" if pub_year else None,
-        "publication_year_confidence": "high" if pub_year else None,
-        "composition_year_start": None,
-        "composition_year_end": None,
-        "composition_year_source": None,
-        "composition_year_confidence": None,
-        "translation_year": None,
-        "translation_year_source": None,
+        **pub_dates,
+        **comp_dates,
+        "translation_year": translation_year,
+        "translation_year_source": translation_year_source,
         "summary": summary_text or None,
         "summary_is_unverified": True if summary_text else None,
         "plain_text_url": plain_text_url,
+        "source_url": source_url,
     }
 
 
@@ -177,9 +339,13 @@ def save_metadata(
 
     Returns the path to the written file.
     """
-    ebook_id = _extract_ebook_id(metadata.get("source_url", ""))
+    ebook_id = metadata.get("id")
+    if ebook_id is not None:
+        ebook_id = str(ebook_id)
+    else:
+        ebook_id = _extract_ebook_id(metadata.get("source_url", ""))
     if not ebook_id:
-        raise ValueError("Cannot extract ebook ID from source_url in metadata dict")
+        raise ValueError("Cannot extract ebook ID from metadata dict")
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
     metadata_file = output_path / f"{ebook_id}.metadata.json"

@@ -197,7 +197,8 @@ def process_ebook(client, ebook_id: str) -> dict:
     if meta.get("error"):
         return {"ebook_id": ebook_id, "status": "error", "error": meta["error"]}
     save_metadata(meta, output_dir="metadata")
-    print(f" {meta.get('title', ['Unknown'])[0]}")
+    title = meta.get("title") or "Unknown"
+    print(f" {title}")
 
     # 2 · Fetch & clean
     print("  [2/4] Fetching & cleaning text...", end="", flush=True)
@@ -213,7 +214,7 @@ def process_ebook(client, ebook_id: str) -> dict:
     # 3 · LLM boundary detection
     print("  [3/4] LLM boundary detection...", flush=True)
 
-    primary_title = meta.get("title", [""])[0]
+    primary_title = meta.get("title") or ""
 
     print("         Start mapper...", end="", flush=True)
     start_segments = client.responses.create(
@@ -277,7 +278,7 @@ def process_ebook(client, ebook_id: str) -> dict:
 
     return {
         "ebook_id": ebook_id,
-        "title": meta.get("title", [""])[0],
+        "title": title,
         "status": "success",
         "characters": len(text_core),
         "file": file_path,
