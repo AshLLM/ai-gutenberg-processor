@@ -202,7 +202,7 @@ def process_ebook(client, ebook_id: str) -> dict:
 
     # 2 · Fetch & clean
     print("  [2/4] Fetching & cleaning text...", end="", flush=True)
-    url = plaintext_url(ebook_id)
+    url = meta.get("plain_text_url") or plaintext_url(ebook_id)
     response = request.urlopen(url)
     raw = response.read().decode("utf-8-sig")
     cleaned_text = strip_boilerplate(raw)
