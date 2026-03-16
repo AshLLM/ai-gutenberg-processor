@@ -144,7 +144,9 @@ def _extract_single_year(
         match = pattern.search(text)
         if match:
             year = int(match.group(1))
-            if _is_plausible(year) and _sanity_check_against_persons(year, sanity_persons):
+            if _is_plausible(year) and _sanity_check_against_persons(
+                year, sanity_persons
+            ):
                 return year, "summary_regex", confidence
     return None, None, None
 
@@ -156,9 +158,9 @@ def _extract_publication_dates(summaries: List[str], authors: List[dict]) -> dic
     date_range = _extract_year_range(text)
     if date_range:
         start, end = date_range
-        if _sanity_check_against_persons(start, authors) and _sanity_check_against_persons(
-            end, authors
-        ):
+        if _sanity_check_against_persons(
+            start, authors
+        ) and _sanity_check_against_persons(end, authors):
             return {
                 "publication_year_start": start,
                 "publication_year_end": end,
@@ -192,9 +194,9 @@ def _extract_composition_dates(summaries: List[str], authors: List[dict]) -> dic
     date_range = _extract_year_range(text)
     if date_range:
         start, end = date_range
-        if _sanity_check_against_persons(start, authors) and _sanity_check_against_persons(
-            end, authors
-        ):
+        if _sanity_check_against_persons(
+            start, authors
+        ) and _sanity_check_against_persons(end, authors):
             return {
                 "composition_year_start": start,
                 "composition_year_end": end,
