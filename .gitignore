@@ -9,6 +9,7 @@ OPENAI_KEY.env
 # Generated outputs
 core_txts/
 metadata/
+raw_txts/
 
 # Jupyter checkpoints
 .ipynb_checkpoints/
