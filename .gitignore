@@ -13,3 +13,7 @@ raw_txts/
 
 # Jupyter checkpoints
 .ipynb_checkpoints/
+
+# Hidden temporarily
+ai_gutenberg_cleaner.ipynb
+tests.ipynb
